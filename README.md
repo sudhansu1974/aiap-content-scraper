@@ -9,14 +9,16 @@ A modern web application for extracting and analyzing content from any website. 
 - **Screenshot Capture**: Generate and display screenshots of scraped pages
 - **Save & Retrieve Results**: Store all scraped data and screenshots in Supabase
 - **Basic Issue Detection**: Highlight broken links and flag missing titles or headings
-- **LLM Analysis**: Get AI-powered suggestions for UI/UX improvements and accessibility issues
+- **AI Content Analysis**: Get AI-powered content summaries, readability scores, sentiment analysis, and improvement suggestions using OpenAI
+- **Visual Content Analysis**: Analyze images, videos, and visual elements on scraped pages
 
 ## Tech Stack
 
 - **Frontend**: Next.js 14+ (App Router), React Server Components, TypeScript
 - **UI**: Shadcn UI, TailwindCSS
 - **Backend**: Next.js API Routes, Supabase
-- **Web Scraping**: Firecrawl.dev API
+- **Web Scraping**: Puppeteer (replaced Firecrawl.dev)
+- **AI Analysis**: OpenAI GPT-3.5-turbo for content analysis
 - **Form Validation**: Zod, React Hook Form
 - **Database & Storage**: Supabase
 
@@ -26,7 +28,7 @@ A modern web application for extracting and analyzing content from any website. 
 
 - Node.js 18.17.0 or later
 - Supabase account
-- Firecrawl.dev API key
+- OpenAI API key (for AI content analysis)
 
 ### Installation
 
@@ -46,11 +48,20 @@ A modern web application for extracting and analyzing content from any website. 
    # Supabase credentials
    NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+   SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 
-   # Firecrawl API credentials
-   FIRECRAWL_API_KEY=your-firecrawl-api-key
-   FIRECRAWL_API_URL=https://api.firecrawl.dev
+   # OpenAI API credentials (for AI content analysis)
+   OPENAI_API_KEY=your-openai-api-key
+   
+   # GitHub Repository URL (for footer links)
+   GITHUB_REPO_URL=https://github.com/sudhansu1974/aiap-content-scraper
    ```
+
+   **Getting OpenAI API Key:**
+   1. Go to [OpenAI Platform](https://platform.openai.com/api-keys)
+   2. Sign up or log in to your account
+   3. Create a new API key
+   4. Copy the key and add it to your `.env.local` file
 
 4. Set up your Supabase database with the following table:
    ```sql
@@ -92,7 +103,8 @@ content-scraper/
 │   │   ├── scraping-result.tsx # Results display
 │   │   └── history-list.tsx    # History list
 │   ├── lib/                    # Utility libraries
-│   │   ├── firecrawl/          # Firecrawl API client
+│   │   ├── puppeteer/          # Puppeteer web scraping client
+│   │   ├── ai/                 # OpenAI content analysis
 │   │   ├── supabase/           # Supabase client
 │   │   └── utils.ts            # Helper functions
 │   └── types/                  # TypeScript types
@@ -103,9 +115,16 @@ content-scraper/
 
 1. Enter a URL in the input field on the home page
 2. Click "Scrape Content" to extract data from the website
-3. View the extracted content, including headings, links, and screenshot
-4. Save the results to your Supabase database
-5. Access your scraping history on the History page
+3. View the extracted content in organized tabs:
+   - **Headings**: Page structure and hierarchy
+   - **Links**: All hyperlinks with broken link detection
+   - **Issues**: Detected problems and improvement suggestions
+   - **Screenshot**: Full-page screenshot of the website
+   - **Content Summary**: AI-powered content analysis and visual content metrics
+   - **AI Content Analysis**: Detailed readability, sentiment, keywords, and suggestions
+4. Generate AI-powered content summaries and analysis using OpenAI
+5. Save the results to your Supabase database
+6. Access your scraping history on the History page
 
 ## Contributing
 
