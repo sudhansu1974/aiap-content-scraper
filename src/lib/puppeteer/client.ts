@@ -1,4 +1,5 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
+import chromium from '@sparticuz/chromium';
 import { isValidUrl } from '../utils';
 
 // Types for scraped data
@@ -26,10 +27,39 @@ let browserInstance: Browser | null = null;
  */
 async function getBrowser(): Promise<Browser> {
     if (!browserInstance) {
-        browserInstance = await puppeteer.launch({
-            headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        });
+        const isProduction = process.env.NODE_ENV === 'production';
+
+        if (isProduction) {
+            // Use @sparticuz/chromium for serverless environments
+            browserInstance = await puppeteer.launch({
+                args: [
+                    ...chromium.args,
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--no-first-run',
+                    '--no-zygote',
+                    '--disable-gpu',
+                    '--single-process',
+                    '--disable-background-timer-throttling',
+                    '--disable-backgrounding-occluded-windows',
+                    '--disable-renderer-backgrounding',
+                    '--disable-features=TranslateUI',
+                    '--disable-ipc-flooding-protection',
+                ],
+                defaultViewport: chromium.defaultViewport,
+                executablePath: await chromium.executablePath(),
+                headless: chromium.headless,
+                ignoreHTTPSErrors: true,
+            });
+        } else {
+            // Use regular puppeteer for local development
+            browserInstance = await puppeteer.launch({
+                headless: 'new',
+                args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            });
+        }
     }
     return browserInstance;
 }

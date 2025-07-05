@@ -126,6 +126,48 @@ content-scraper/
 5. Save the results to your Supabase database
 6. Access your scraping history on the History page
 
+## Deployment on Vercel
+
+This application is optimized for deployment on Vercel with serverless Puppeteer support.
+
+### Environment Variables for Vercel
+
+Set the following environment variables in your Vercel dashboard:
+
+```
+# Supabase credentials
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+
+# OpenAI API credentials (for AI content analysis)
+OPENAI_API_KEY=your-openai-api-key
+
+# Puppeteer configuration for serverless deployment
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome
+```
+
+### Deployment Steps
+
+1. Push your code to GitHub
+2. Connect your repository to Vercel
+3. Set the environment variables in Vercel dashboard
+4. Deploy!
+
+The application uses `@sparticuz/chromium` for serverless Puppeteer support, which automatically handles Chrome installation in Vercel's environment.
+
+### Troubleshooting Vercel Deployment
+
+If you encounter Chrome-related errors:
+
+1. Ensure `PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true` is set
+2. Verify the `vercel.json` configuration is present
+3. Check that `@sparticuz/chromium` is installed
+4. Monitor function timeout limits (current limit: 30 seconds)
+
+For more details, check out the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying).
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
@@ -133,4 +175,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-# aiap-content-scraper
