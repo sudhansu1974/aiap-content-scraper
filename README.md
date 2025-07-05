@@ -161,10 +161,24 @@ The application uses `@sparticuz/chromium` for serverless Puppeteer support, whi
 
 If you encounter Chrome-related errors:
 
-1. Ensure `PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true` is set
-2. Verify the `vercel.json` configuration is present
-3. Check that `@sparticuz/chromium` is installed
-4. Monitor function timeout limits (current limit: 30 seconds)
+1. **Environment Variables**: Ensure these are set in Vercel:
+   - `PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true`
+   - `PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome`
+
+2. **Package Versions**: Check that you have compatible versions:
+   - `@sparticuz/chromium@131.0.1` (or latest)
+   - `puppeteer@24.11.2` (or latest)
+
+3. **Vercel Configuration**: Verify `vercel.json` is present with proper settings
+
+4. **Function Timeout**: Monitor function timeout limits (current limit: 30 seconds)
+
+5. **Fallback Strategy**: The app automatically falls back to system Chrome if @sparticuz/chromium fails
+
+6. **Common Error Messages**:
+   - "Could not find Chrome": Check environment variables
+   - "Input directory does not exist": Try updating @sparticuz/chromium version
+   - "Protocol error": Increase function timeout or reduce page complexity
 
 For more details, check out the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying).
 

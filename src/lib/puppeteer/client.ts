@@ -1,6 +1,9 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
-import chromium from '@sparticuz/chromium';
 import { isValidUrl } from '../utils';
+import {
+    launchBrowserWithChromium,
+    launchBrowserWithFallback,
+} from './browser-config';
 
 // Types for scraped data
 export interface ScrapedData {
@@ -30,29 +33,37 @@ async function getBrowser(): Promise<Browser> {
         const isProduction = process.env.NODE_ENV === 'production';
 
         if (isProduction) {
-            // Use @sparticuz/chromium for serverless environments
-            browserInstance = await puppeteer.launch({
-                args: [
-                    ...chromium.args,
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-accelerated-2d-canvas',
-                    '--no-first-run',
-                    '--no-zygote',
-                    '--disable-gpu',
-                    '--single-process',
-                    '--disable-background-timer-throttling',
-                    '--disable-backgrounding-occluded-windows',
-                    '--disable-renderer-backgrounding',
-                    '--disable-features=TranslateUI',
-                    '--disable-ipc-flooding-protection',
-                ],
-                defaultViewport: chromium.defaultViewport,
-                executablePath: await chromium.executablePath(),
-                headless: chromium.headless,
-                ignoreHTTPSErrors: true,
-            });
+            try {
+                // Try @sparticuz/chromium first for serverless environments
+                console.log(
+                    'Attempting to launch browser with @sparticuz/chromium...'
+                );
+                browserInstance = await launchBrowserWithChromium();
+                console.log(
+                    'Successfully launched browser with @sparticuz/chromium'
+                );
+            } catch (error) {
+                console.error(
+                    'Failed to launch with @sparticuz/chromium:',
+                    error
+                );
+                console.log('Falling back to system Chrome...');
+                try {
+                    // Fallback to system Chrome if @sparticuz/chromium fails
+                    browserInstance = await launchBrowserWithFallback();
+                    console.log(
+                        'Successfully launched browser with system Chrome'
+                    );
+                } catch (fallbackError) {
+                    console.error(
+                        'Failed to launch with system Chrome:',
+                        fallbackError
+                    );
+                    throw new Error(
+                        `Failed to launch browser: ${fallbackError}`
+                    );
+                }
+            }
         } else {
             // Use regular puppeteer for local development
             browserInstance = await puppeteer.launch({
