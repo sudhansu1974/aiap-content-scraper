@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, BarChart2, BookOpen, MessageSquare, Lightbulb } from "lucide-react";
@@ -15,6 +15,14 @@ export function ContentAnalysisDisplay({ scrapedData }: ContentAnalysisProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<"summary" | "readability" | "keywords" | "suggestions">("summary");
+
+    // Reset component state when scraped data changes (new URL scraped)
+    useEffect(() => {
+        setAnalysis(null);
+        setIsLoading(false);
+        setError(null);
+        setActiveTab("summary");
+    }, [scrapedData.url, scrapedData.createdAt]); // Reset when URL or creation time changes
 
     const handleAnalyze = async () => {
         setIsLoading(true);

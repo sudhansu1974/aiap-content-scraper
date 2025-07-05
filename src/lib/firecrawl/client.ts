@@ -18,11 +18,7 @@ export interface ScrapedData {
     error?: string;
 }
 
-// Initialize Firecrawl client
-const firecrawlApp = new FirecrawlApp({
-    apiKey: process.env.FIRECRAWL_API_KEY || '',
-    apiUrl: process.env.FIRECRAWL_API_URL || 'https://api.firecrawl.dev',
-});
+// Firecrawl client will be initialized per request to ensure environment variables are available
 
 /**
  * Scrapes a website using Firecrawl
@@ -38,21 +34,66 @@ export async function scrapeWebsite(url: string): Promise<ScrapedData> {
 
         console.log('Scraping website with Firecrawl:', url);
 
-        // Scrape the website using Firecrawl
-        const scrapeResult = await firecrawlApp.scrapeUrl(url, {
-            formats: ['markdown', 'html', 'screenshot@fullPage'],
-            includeTags: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a'],
-            onlyMainContent: false,
-            waitFor: 3000,
+        // Check for API key
+        if (!process.env.FIRECRAWL_API_KEY) {
+            throw new Error(
+                'FIRECRAWL_API_KEY environment variable is not set'
+            );
+        }
+
+        // Initialize Firecrawl client per request to ensure env vars are available
+        const firecrawlApp = new FirecrawlApp({
+            apiKey: process.env.FIRECRAWL_API_KEY,
+            apiUrl:
+                process.env.FIRECRAWL_API_URL || 'https://api.firecrawl.dev',
         });
+
+        console.log(
+            'Firecrawl API URL:',
+            process.env.FIRECRAWL_API_URL || 'https://api.firecrawl.dev'
+        );
+
+        // Scrape the website using Firecrawl with timeout for Vercel
+        const scrapeResult = await Promise.race([
+            firecrawlApp.scrapeUrl(url, {
+                formats: ['markdown', 'html', 'screenshot@fullPage'],
+                includeTags: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a'],
+                onlyMainContent: false,
+                waitFor: 3000,
+                timeout: 25000, // 25 seconds timeout for Vercel
+            }),
+            new Promise((_, reject) =>
+                setTimeout(
+                    () =>
+                        reject(
+                            new Error(
+                                'Request timeout - Vercel function limit reached'
+                            )
+                        ),
+                    28000
+                )
+            ),
+        ]);
 
         // Debug logging (can be removed in production)
         // console.log('Full Firecrawl response:', JSON.stringify(scrapeResult, null, 2));
 
+        // Check if we received an HTML error page instead of JSON
+        if (
+            typeof scrapeResult === 'string' &&
+            scrapeResult.includes('<html')
+        ) {
+            throw new Error(
+                'Received HTML error page from Firecrawl API - check API key and rate limits'
+            );
+        }
+
         // Handle different response formats
         let data;
         if (scrapeResult.success === false) {
-            throw new Error(scrapeResult.error || 'Failed to scrape website');
+            const errorMsg = scrapeResult.error || 'Failed to scrape website';
+            console.error('Firecrawl API error:', errorMsg);
+            throw new Error(errorMsg);
         }
 
         // Handle different response structures
@@ -107,13 +148,29 @@ export async function scrapeWebsite(url: string): Promise<ScrapedData> {
     } catch (error: any) {
         console.error('Error scraping website with Firecrawl:', error.message);
 
+        // Provide more specific error messages for common issues
+        let errorMessage = error.message || 'Failed to scrape website';
+
+        if (error.message?.includes('Unexpected token')) {
+            errorMessage =
+                'Firecrawl API returned invalid response - likely an authentication or rate limit issue';
+        } else if (error.message?.includes('API key')) {
+            errorMessage = 'Invalid or missing Firecrawl API key';
+        } else if (error.message?.includes('timeout')) {
+            errorMessage =
+                'Request timed out - website may be slow or unavailable';
+        } else if (error.message?.includes('rate limit')) {
+            errorMessage =
+                'Firecrawl API rate limit exceeded - please try again later';
+        }
+
         return {
             url,
             title: null,
             headings: [],
             links: [],
             screenshot: null,
-            error: error.message || 'Failed to scrape website',
+            error: errorMessage,
         };
     }
 }

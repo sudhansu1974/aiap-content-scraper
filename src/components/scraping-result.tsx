@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     Card,
     CardHeader,
@@ -35,6 +35,16 @@ export function ScrapingResultDisplay({
     const [analysis, setAnalysis] = useState<ContentAnalysis | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analysisError, setAnalysisError] = useState<string | null>(null);
+
+    // Reset component state when result changes (new URL scraped)
+    useEffect(() => {
+        setActiveTab('headings');
+        setIsFullscreen(false);
+        setSaveStatus('idle');
+        setAnalysis(null);
+        setIsAnalyzing(false);
+        setAnalysisError(null);
+    }, [result.url, result.createdAt]); // Reset when URL or creation time changes
 
     // Count issues by type
     const issuesByType = (result.issues || []).reduce((acc, issue) => {

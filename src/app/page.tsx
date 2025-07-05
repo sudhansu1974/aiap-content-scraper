@@ -17,6 +17,7 @@ export default function Home() {
   const handleScrape = async (url: string) => {
     setIsLoading(true);
     setError(null);
+    setScrapingResult(null); // Clear previous results
 
     try {
       const response = await fetch("/api/scrape", {

@@ -175,12 +175,22 @@ The application uses Firecrawl's API for web scraping, which eliminates the need
 
 ### Troubleshooting Vercel Deployment
 
-If you encounter issues:
+#### Common Error: "Unexpected token 'A', 'An error o'... is not valid JSON"
 
-1. **Environment Variables**: Ensure all required environment variables are set in Vercel
-2. **API Keys**: Verify your Firecrawl and OpenAI API keys are valid and have sufficient credits
-3. **Function Timeout**: Monitor function timeout limits (current limit: 30 seconds)
+This error typically occurs when Firecrawl returns an HTML error page instead of JSON. **Solutions:**
+
+1. **Check API Key**: Verify `FIRECRAWL_API_KEY` is correctly set in Vercel environment variables
+2. **API Credits**: Ensure your Firecrawl account has sufficient credits
+3. **Rate Limiting**: You may be hitting Firecrawl's rate limits - wait and try again
+4. **Network Issues**: Temporary connectivity issues between Vercel and Firecrawl
+
+#### Other Common Issues:
+
+1. **Environment Variables**: Ensure all required environment variables are set in Vercel dashboard (not just `.env.local`)
+2. **API Keys**: Verify your Firecrawl and OpenAI API keys are valid and active
+3. **Function Timeout**: Monitor function timeout limits (current limit: 28 seconds with built-in timeout handling)
 4. **Rate Limits**: Check if you're hitting API rate limits on Firecrawl or OpenAI
+5. **Redeploy**: After adding environment variables, trigger a new deployment
 
 For more details, check out the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying).
 

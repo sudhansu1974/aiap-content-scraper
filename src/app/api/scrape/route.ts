@@ -33,8 +33,48 @@ export async function POST(request: NextRequest) {
         const url = body.url;
         console.log('Processing scrape request for:', url);
 
-        // 1. Scrape the website using Firecrawl
-        const scrapedData = await scrapeWebsite(url);
+        // 1. Scrape the website using Firecrawl with enhanced error handling
+        let scrapedData;
+        try {
+            scrapedData = await scrapeWebsite(url);
+        } catch (error: any) {
+            console.error('Firecrawl scraping error:', error.message);
+
+            // Handle specific errors that occur on Vercel
+            if (error.message?.includes('Unexpected token')) {
+                return NextResponse.json(
+                    {
+                        error: 'Firecrawl API authentication failed',
+                        details:
+                            'This usually indicates an invalid API key, rate limiting, or network issues on Vercel. Please check your FIRECRAWL_API_KEY environment variable.',
+                    },
+                    { status: 502 }
+                );
+            } else if (error.message?.includes('timeout')) {
+                return NextResponse.json(
+                    {
+                        error: 'Request timeout',
+                        details:
+                            'The scraping request took too long. This may be due to Vercel function limits or a slow target website.',
+                    },
+                    { status: 504 }
+                );
+            } else if (error.message?.includes('API key')) {
+                return NextResponse.json(
+                    {
+                        error: 'Invalid Firecrawl API key',
+                        details:
+                            'Please check your FIRECRAWL_API_KEY environment variable in Vercel settings.',
+                    },
+                    { status: 401 }
+                );
+            }
+
+            return NextResponse.json(
+                { error: error.message || 'Failed to scrape website' },
+                { status: 500 }
+            );
+        }
 
         if (!scrapedData || scrapedData.error) {
             return NextResponse.json(
