@@ -1,27 +1,14 @@
-import axios from 'axios';
+import FirecrawlApp from '@mendable/firecrawl-js';
 import { isValidUrl } from '../utils';
 
-// Firecrawl API configuration
-const API_KEY = process.env.FIRECRAWL_API_KEY || '';
-const API_URL = process.env.FIRECRAWL_API_URL || 'https://api.firecrawl.dev';
-
-// Flag to use mock data when API key is missing
-const USE_MOCK_DATA = !API_KEY || process.env.NODE_ENV === 'development';
-
-if (!API_KEY) {
-    console.warn(
-        'Missing Firecrawl API key. Using mock data instead. Please set FIRECRAWL_API_KEY environment variable.'
-    );
-}
-
-// Types for Firecrawl API responses
-export interface FirecrawlResponse {
+// Types for scraped data
+export interface ScrapedData {
     url: string;
     title: string | null;
     headings: {
         tag: string;
         text: string;
-        level?: number;
+        level: number;
     }[];
     links: {
         href: string;
@@ -31,86 +18,94 @@ export interface FirecrawlResponse {
     error?: string;
 }
 
-/**
- * Generates mock data for development and testing
- */
-function getMockData(url: string): FirecrawlResponse {
-    return {
-        url,
-        title: 'Mock Website Title',
-        headings: [
-            { tag: 'h1', text: 'Main Heading', level: 1 },
-            { tag: 'h2', text: 'Subheading 1', level: 2 },
-            { tag: 'h2', text: 'Subheading 2', level: 2 },
-            { tag: 'h3', text: 'Section 1', level: 3 },
-            { tag: 'h3', text: 'Section 2', level: 3 },
-        ],
-        links: [
-            { href: 'https://example.com', text: 'Example Link' },
-            { href: 'https://example.com/about', text: 'About Us' },
-            { href: 'https://example.com/contact', text: 'Contact' },
-            { href: 'https://example.com/broken', text: 'Broken Link' },
-            { href: 'https://example.com/products', text: 'Products' },
-        ],
-        screenshot:
-            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-    };
-}
+// Initialize Firecrawl client
+const firecrawlApp = new FirecrawlApp({
+    apiKey: process.env.FIRECRAWL_API_KEY || '',
+    apiUrl: process.env.FIRECRAWL_API_URL || 'https://api.firecrawl.dev',
+});
 
 /**
- * Scrapes a website using Firecrawl API
+ * Scrapes a website using Firecrawl
  * @param url The URL to scrape
- * @returns Scraped data or null if error
+ * @returns Scraped data
  */
-export async function scrapeWebsite(
-    url: string
-): Promise<FirecrawlResponse | null> {
+export async function scrapeWebsite(url: string): Promise<ScrapedData> {
     try {
-        // Validate URL before sending to API
+        // Validate URL before proceeding
         if (!isValidUrl(url)) {
             throw new Error('Invalid URL format');
         }
 
-        // Use mock data if API key is missing or in development mode
-        if (USE_MOCK_DATA) {
-            console.log('Using mock data for scraping:', url);
-            return getMockData(url);
+        console.log('Scraping website with Firecrawl:', url);
+
+        // Scrape the website using Firecrawl
+        const scrapeResult = await firecrawlApp.scrapeUrl(url, {
+            formats: ['markdown', 'html', 'screenshot@fullPage'],
+            includeTags: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a'],
+            onlyMainContent: false,
+            waitFor: 3000,
+        });
+
+        // Debug logging (can be removed in production)
+        // console.log('Full Firecrawl response:', JSON.stringify(scrapeResult, null, 2));
+
+        // Handle different response formats
+        let data;
+        if (scrapeResult.success === false) {
+            throw new Error(scrapeResult.error || 'Failed to scrape website');
         }
 
-        const response = await axios.post(
-            `${API_URL}/scrape`,
-            { url, includeScreenshot: true },
-            {
-                headers: {
-                    Authorization: `Bearer ${API_KEY}`,
-                    'Content-Type': 'application/json',
-                },
-                timeout: 30000, // 30 second timeout
-            }
-        );
-
-        if (response.status !== 200) {
-            throw new Error(`API returned status code ${response.status}`);
+        // Handle different response structures
+        if (scrapeResult.data) {
+            data = scrapeResult.data;
+        } else if (
+            scrapeResult.markdown ||
+            scrapeResult.html ||
+            scrapeResult.metadata
+        ) {
+            // Direct response format
+            data = scrapeResult;
+        } else {
+            console.error(
+                'Unexpected Firecrawl response structure:',
+                scrapeResult
+            );
+            throw new Error('Unexpected response format from Firecrawl');
         }
 
-        // Process headings to add level property based on tag
-        const processedData = {
-            ...response.data,
-            headings: response.data.headings.map((heading: any) => ({
-                ...heading,
-                level: parseInt(heading.tag.replace('h', ''), 10) || 0,
-            })),
+        // Debug logging (can be removed in production)
+        // console.log('Processed data structure:', {
+        //     hasData: !!data,
+        //     dataKeys: data ? Object.keys(data) : [],
+        //     hasMetadata: !!data?.metadata,
+        //     metadataKeys: data?.metadata ? Object.keys(data.metadata) : [],
+        //     hasMarkdown: !!data?.markdown,
+        //     hasHtml: !!data?.html,
+        //     hasScreenshot: !!data?.screenshot,
+        // });
+
+        // Extract title - handle both direct access and nested metadata
+        const title = data.metadata?.title || data.title || null;
+
+        // Extract headings from the structured data
+        const headings = extractHeadings(data.html || '');
+
+        // Extract links from the structured data
+        const links = extractLinks(data.html || '', url);
+
+        // Get screenshot if available - handle different response formats
+        const screenshot =
+            data.screenshot || data.actions?.screenshots?.[0] || null;
+
+        return {
+            url,
+            title,
+            headings,
+            links,
+            screenshot,
         };
-
-        return processedData;
     } catch (error: any) {
-        console.error('Error scraping website:', error.message);
-
-        // If we're in development mode, return mock data instead of failing
-        if (process.env.NODE_ENV === 'development') {
-            console.log('Falling back to mock data due to API error');
-            return getMockData(url);
-        }
+        console.error('Error scraping website with Firecrawl:', error.message);
 
         return {
             url,
@@ -124,6 +119,64 @@ export async function scrapeWebsite(
 }
 
 /**
+ * Extract headings from HTML content
+ */
+function extractHeadings(
+    html: string
+): { tag: string; text: string; level: number }[] {
+    const headings: { tag: string; text: string; level: number }[] = [];
+    const headingRegex = /<(h[1-6])[^>]*>(.*?)<\/\1>/gi;
+    let match;
+
+    while ((match = headingRegex.exec(html)) !== null) {
+        const tag = match[1].toLowerCase();
+        const text = match[2].replace(/<[^>]*>/g, '').trim();
+        const level = parseInt(tag.replace('h', ''), 10);
+
+        if (text) {
+            headings.push({ tag, text, level });
+        }
+    }
+
+    return headings;
+}
+
+/**
+ * Extract links from HTML content
+ */
+function extractLinks(
+    html: string,
+    baseUrl: string
+): { href: string; text: string }[] {
+    const links: { href: string; text: string }[] = [];
+    const linkRegex = /<a[^>]*href=["']([^"']*)["'][^>]*>(.*?)<\/a>/gi;
+    let match;
+
+    while ((match = linkRegex.exec(html)) !== null) {
+        let href = match[1];
+        const text = match[2].replace(/<[^>]*>/g, '').trim();
+
+        // Convert relative URLs to absolute URLs
+        if (href.startsWith('/')) {
+            const baseUrlObj = new URL(baseUrl);
+            href = `${baseUrlObj.protocol}//${baseUrlObj.host}${href}`;
+        } else if (href.startsWith('./')) {
+            const baseUrlObj = new URL(baseUrl);
+            href = `${baseUrlObj.protocol}//${baseUrlObj.host}${
+                baseUrlObj.pathname
+            }${href.substring(2)}`;
+        }
+
+        // Only include http/https links
+        if (href.startsWith('http') && text) {
+            links.push({ href, text });
+        }
+    }
+
+    return links;
+}
+
+/**
  * Checks if links are broken
  * @param links Array of URLs to check
  * @returns Array of links with isBroken flag
@@ -131,145 +184,166 @@ export async function scrapeWebsite(
 export async function checkBrokenLinks(
     links: string[]
 ): Promise<{ url: string; isBroken: boolean }[]> {
-    try {
-        // Use mock data if API key is missing or in development mode
-        if (USE_MOCK_DATA) {
-            console.log('Using mock data for checking broken links');
-            return links.map((url) => ({
-                url,
-                // Mark some links as broken for testing
-                isBroken: url.includes('broken') || Math.random() < 0.2,
-            }));
-        }
+    const results: { url: string; isBroken: boolean }[] = [];
 
-        const response = await axios.post(
-            `${API_URL}/check-links`,
-            { links },
-            {
-                headers: {
-                    Authorization: `Bearer ${API_KEY}`,
-                    'Content-Type': 'application/json',
-                },
-                timeout: 30000, // 30 second timeout
+    // Process links in batches to avoid overwhelming the server
+    const batchSize = 10;
+    for (let i = 0; i < links.length; i += batchSize) {
+        const batch = links.slice(i, i + batchSize);
+        const batchPromises = batch.map(async (url) => {
+            try {
+                const response = await fetch(url, {
+                    method: 'HEAD',
+                    timeout: 10000,
+                });
+                return { url, isBroken: !response.ok };
+            } catch (error) {
+                return { url, isBroken: true };
             }
-        );
+        });
 
-        if (response.status !== 200) {
-            throw new Error(`API returned status code ${response.status}`);
-        }
-
-        return response.data.results;
-    } catch (error: any) {
-        console.error('Error checking broken links:', error.message);
-
-        // If we're in development mode, return mock data
-        if (process.env.NODE_ENV === 'development') {
-            return links.map((url) => ({
-                url,
-                isBroken: url.includes('broken') || Math.random() < 0.2,
-            }));
-        }
-
-        // Return all links as not broken if the API call fails
-        return links.map((url) => ({ url, isBroken: false }));
+        const batchResults = await Promise.all(batchPromises);
+        results.push(...batchResults);
     }
+
+    return results;
 }
 
 /**
- * Analyzes website for basic issues using Firecrawl's LLM integration
+ * Analyzes website for basic issues
  * @param scrapedData The scraped website data
  * @returns Array of issues found
  */
 export async function analyzeWebsiteIssues(
-    scrapedData: FirecrawlResponse
+    scrapedData: ScrapedData
 ): Promise<
-    { type: string; description: string; severity?: string; element?: string }[]
+    { type: string; description: string; severity: string; element?: string }[]
 > {
+    const issues: {
+        type: string;
+        description: string;
+        severity: string;
+        element?: string;
+    }[] = [];
+
     try {
-        // Use mock data if API key is missing or in development mode
-        if (USE_MOCK_DATA) {
-            console.log('Using mock data for website analysis');
-            return [
-                {
-                    type: 'Missing Meta Description',
-                    description:
-                        'The page is missing a meta description which is important for SEO.',
-                    severity: 'medium',
-                },
-                {
-                    type: 'Broken Link',
-                    description:
-                        'The page contains at least one broken link that should be fixed.',
-                    severity: 'high',
-                    element:
-                        '<a href="https://example.com/broken">Broken Link</a>',
-                },
-                {
-                    type: 'Accessibility Issue',
-                    description:
-                        'Images are missing alt text which affects screen reader users.',
-                    severity: 'medium',
-                    element: '<img src="image.jpg">',
-                },
-            ];
-        }
-
-        const response = await axios.post(
-            `${API_URL}/analyze`,
-            {
-                url: scrapedData.url,
-                title: scrapedData.title,
-                headings: scrapedData.headings,
-                links: scrapedData.links,
-            },
-            {
-                headers: {
-                    Authorization: `Bearer ${API_KEY}`,
-                    'Content-Type': 'application/json',
-                },
-                timeout: 30000, // 30 second timeout
-            }
-        );
-
-        if (response.status !== 200) {
-            throw new Error(`API returned status code ${response.status}`);
-        }
-
-        return response.data.issues || [];
-    } catch (error: any) {
-        console.error('Error analyzing website:', error.message);
-
-        // If we're in development mode, return mock issues
-        if (process.env.NODE_ENV === 'development') {
-            return [
-                {
-                    type: 'API Error',
-                    description: `Could not analyze website: ${error.message}`,
-                    severity: 'low',
-                },
-                {
-                    type: 'Missing Meta Description',
-                    description:
-                        'The page is missing a meta description which is important for SEO.',
-                    severity: 'medium',
-                },
-                {
-                    type: 'Broken Link',
-                    description:
-                        'The page contains at least one broken link that should be fixed.',
-                    severity: 'high',
-                },
-            ];
-        }
-
-        return [
-            {
-                type: 'error',
-                description: `Failed to analyze website: ${
-                    error.message || 'Unknown error'
-                }`,
+        // Check for missing title
+        if (!scrapedData.title || scrapedData.title.trim() === '') {
+            issues.push({
+                type: 'Missing Title',
+                description:
+                    'The page is missing a title which is important for SEO and accessibility.',
                 severity: 'high',
-            },
-        ];
+            });
+        }
+
+        // Check for short title
+        if (scrapedData.title && scrapedData.title.length < 10) {
+            issues.push({
+                type: 'Short Title',
+                description:
+                    'The page title is too short. Consider making it more descriptive.',
+                severity: 'medium',
+                element: scrapedData.title,
+            });
+        }
+
+        // Check for long title
+        if (scrapedData.title && scrapedData.title.length > 60) {
+            issues.push({
+                type: 'Long Title',
+                description:
+                    'The page title is too long and may be truncated in search results.',
+                severity: 'medium',
+                element: scrapedData.title,
+            });
+        }
+
+        // Check for missing H1
+        const h1Count = scrapedData.headings.filter(
+            (h) => h.level === 1
+        ).length;
+        if (h1Count === 0) {
+            issues.push({
+                type: 'Missing H1',
+                description:
+                    'The page is missing an H1 heading which is important for SEO.',
+                severity: 'high',
+            });
+        }
+
+        // Check for multiple H1s
+        if (h1Count > 1) {
+            issues.push({
+                type: 'Multiple H1s',
+                description:
+                    'The page has multiple H1 headings. Consider using only one H1 per page.',
+                severity: 'medium',
+            });
+        }
+
+        // Check for heading hierarchy
+        const headingLevels = scrapedData.headings.map((h) => h.level);
+        for (let i = 1; i < headingLevels.length; i++) {
+            if (headingLevels[i] > headingLevels[i - 1] + 1) {
+                issues.push({
+                    type: 'Heading Hierarchy',
+                    description:
+                        'Heading levels should not skip levels (e.g., H1 directly to H3).',
+                    severity: 'medium',
+                });
+                break;
+            }
+        }
+
+        // Check for empty headings
+        const emptyHeadings = scrapedData.headings.filter(
+            (h) => h.text.trim() === ''
+        );
+        if (emptyHeadings.length > 0) {
+            issues.push({
+                type: 'Empty Headings',
+                description: `Found ${emptyHeadings.length} empty heading(s). All headings should have descriptive text.`,
+                severity: 'medium',
+            });
+        }
+
+        // Check for links without text
+        const emptyLinks = scrapedData.links.filter(
+            (link) => !link.text || link.text.trim() === ''
+        );
+        if (emptyLinks.length > 0) {
+            issues.push({
+                type: 'Empty Links',
+                description: `Found ${emptyLinks.length} link(s) without descriptive text.`,
+                severity: 'medium',
+            });
+        }
+
+        // Check for "click here" or similar non-descriptive link text
+        const nonDescriptiveLinks = scrapedData.links.filter((link) =>
+            /^(click here|here|read more|more|link)$/i.test(link.text.trim())
+        );
+        if (nonDescriptiveLinks.length > 0) {
+            issues.push({
+                type: 'Non-descriptive Links',
+                description: `Found ${nonDescriptiveLinks.length} link(s) with non-descriptive text like "click here".`,
+                severity: 'low',
+            });
+        }
+
+        console.log(`Found ${issues.length} issues for ${scrapedData.url}`);
+        return issues;
+    } catch (error: any) {
+        console.error('Error analyzing website issues:', error.message);
+        return [];
     }
+}
+
+/**
+ * Clean up resources (not needed for Firecrawl, but keeping for compatibility)
+ */
+export async function closeBrowser(): Promise<void> {
+    // No cleanup needed for Firecrawl
+    console.log('Firecrawl client cleanup completed');
 }

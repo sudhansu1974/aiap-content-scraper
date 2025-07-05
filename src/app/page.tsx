@@ -175,7 +175,7 @@ export default function Home() {
               <div className="prose dark:prose-invert max-w-none">
                 <h3>How It Works</h3>
                 <p>
-                  Content Scraper uses Puppeteer, a headless browser automation library, to extract content from websites.
+                  Content Scraper uses Firecrawl, a powerful web scraping API, to extract content from websites.
                   It navigates to the URL you provide, captures the page's structure, and analyzes its content.
                 </p>
 
@@ -200,7 +200,7 @@ export default function Home() {
 
                 <h3>Technical Details</h3>
                 <p>
-                  Built with Next.js, TypeScript, TailwindCSS, and Shadcn UI. Uses Puppeteer for web scraping and Supabase for data storage.
+                  Built with Next.js, TypeScript, TailwindCSS, and Shadcn UI. Uses Firecrawl for web scraping and Supabase for data storage.
                 </p>
               </div>
 

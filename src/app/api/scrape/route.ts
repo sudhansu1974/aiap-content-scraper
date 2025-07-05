@@ -3,14 +3,23 @@ import {
     scrapeWebsite,
     analyzeWebsiteIssues,
     checkBrokenLinks,
-} from '@/lib/puppeteer/client';
+} from '@/lib/firecrawl/client';
 import { saveScrapedData } from '@/lib/supabase/client';
 import { urlSchema } from '@/types';
 
 export async function POST(request: NextRequest) {
     try {
         // Parse and validate request body
-        const body = await request.json();
+        let body;
+        try {
+            body = await request.json();
+        } catch (parseError) {
+            console.error('JSON parsing error:', parseError);
+            return NextResponse.json(
+                { error: 'Invalid JSON in request body' },
+                { status: 400 }
+            );
+        }
 
         // Validate URL
         const result = urlSchema.safeParse(body.url);
@@ -24,7 +33,7 @@ export async function POST(request: NextRequest) {
         const url = body.url;
         console.log('Processing scrape request for:', url);
 
-        // 1. Scrape the website using Puppeteer
+        // 1. Scrape the website using Firecrawl
         const scrapedData = await scrapeWebsite(url);
 
         if (!scrapedData || scrapedData.error) {

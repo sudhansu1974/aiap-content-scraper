@@ -1,6 +1,6 @@
 # Content Scraper
 
-A modern web application for extracting and analyzing content from any website. Built with Next.js 14+, Supabase, Shadcn UI, TailwindCSS, TypeScript, and Firecrawl.dev.
+A modern web application for extracting and analyzing content from any website. Built with Next.js 14+, Supabase, Shadcn UI, TailwindCSS, TypeScript, and Firecrawl API.
 
 ## Features
 
@@ -17,7 +17,7 @@ A modern web application for extracting and analyzing content from any website. 
 - **Frontend**: Next.js 14+ (App Router), React Server Components, TypeScript
 - **UI**: Shadcn UI, TailwindCSS
 - **Backend**: Next.js API Routes, Supabase
-- **Web Scraping**: Puppeteer (replaced Firecrawl.dev)
+- **Web Scraping**: Firecrawl.dev API
 - **AI Analysis**: OpenAI GPT-3.5-turbo for content analysis
 - **Form Validation**: Zod, React Hook Form
 - **Database & Storage**: Supabase
@@ -28,6 +28,7 @@ A modern web application for extracting and analyzing content from any website. 
 
 - Node.js 18.17.0 or later
 - Supabase account
+- Firecrawl API key (for web scraping)
 - OpenAI API key (for AI content analysis)
 
 ### Installation
@@ -50,12 +51,22 @@ A modern web application for extracting and analyzing content from any website. 
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
    SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 
+   # Firecrawl API credentials (for web scraping)
+   FIRECRAWL_API_KEY=your-firecrawl-api-key
+   FIRECRAWL_API_URL=https://api.firecrawl.dev
+
    # OpenAI API credentials (for AI content analysis)
    OPENAI_API_KEY=your-openai-api-key
    
    # GitHub Repository URL (for footer links)
    GITHUB_REPO_URL=https://github.com/sudhansu1974/aiap-content-scraper
    ```
+
+   **Getting Firecrawl API Key:**
+   1. Go to [Firecrawl](https://firecrawl.dev)
+   2. Sign up for an account
+   3. Navigate to your dashboard
+   4. Copy your API key and add it to your `.env.local` file
 
    **Getting OpenAI API Key:**
    1. Go to [OpenAI Platform](https://platform.openai.com/api-keys)
@@ -77,12 +88,17 @@ A modern web application for extracting and analyzing content from any website. 
    );
    ```
 
-5. Run the development server:
+5. Test your Firecrawl integration (optional):
+```bash
+npm run test:firecrawl
+```
+
+6. Run the development server:
 ```bash
 npm run dev
 ```
 
-6. Open [http://localhost:3000](http://localhost:3000) in your browser.
+7. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Project Structure
 
@@ -103,7 +119,7 @@ content-scraper/
 │   │   ├── scraping-result.tsx # Results display
 │   │   └── history-list.tsx    # History list
 │   ├── lib/                    # Utility libraries
-│   │   ├── puppeteer/          # Puppeteer web scraping client
+│   │   ├── firecrawl/          # Firecrawl web scraping client
 │   │   ├── ai/                 # OpenAI content analysis
 │   │   ├── supabase/           # Supabase client
 │   │   └── utils.ts            # Helper functions
@@ -128,7 +144,7 @@ content-scraper/
 
 ## Deployment on Vercel
 
-This application is optimized for deployment on Vercel with serverless Puppeteer support.
+This application is optimized for deployment on Vercel using the Firecrawl API for web scraping.
 
 ### Environment Variables for Vercel
 
@@ -140,12 +156,12 @@ NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 
+# Firecrawl API credentials (for web scraping)
+FIRECRAWL_API_KEY=your-firecrawl-api-key
+FIRECRAWL_API_URL=https://api.firecrawl.dev
+
 # OpenAI API credentials (for AI content analysis)
 OPENAI_API_KEY=your-openai-api-key
-
-# Puppeteer configuration for serverless deployment
-PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome
 ```
 
 ### Deployment Steps
@@ -155,30 +171,16 @@ PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome
 3. Set the environment variables in Vercel dashboard
 4. Deploy!
 
-The application uses `@sparticuz/chromium` for serverless Puppeteer support, which automatically handles Chrome installation in Vercel's environment.
+The application uses Firecrawl's API for web scraping, which eliminates the need for browser dependencies in serverless environments.
 
 ### Troubleshooting Vercel Deployment
 
-If you encounter Chrome-related errors:
+If you encounter issues:
 
-1. **Environment Variables**: Ensure these are set in Vercel:
-   - `PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true`
-   - `PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome`
-
-2. **Package Versions**: Check that you have compatible versions:
-   - `@sparticuz/chromium@131.0.1` (or latest)
-   - `puppeteer@24.11.2` (or latest)
-
-3. **Vercel Configuration**: Verify `vercel.json` is present with proper settings
-
-4. **Function Timeout**: Monitor function timeout limits (current limit: 30 seconds)
-
-5. **Fallback Strategy**: The app automatically falls back to system Chrome if @sparticuz/chromium fails
-
-6. **Common Error Messages**:
-   - "Could not find Chrome": Check environment variables
-   - "Input directory does not exist": Try updating @sparticuz/chromium version
-   - "Protocol error": Increase function timeout or reduce page complexity
+1. **Environment Variables**: Ensure all required environment variables are set in Vercel
+2. **API Keys**: Verify your Firecrawl and OpenAI API keys are valid and have sufficient credits
+3. **Function Timeout**: Monitor function timeout limits (current limit: 30 seconds)
+4. **Rate Limits**: Check if you're hitting API rate limits on Firecrawl or OpenAI
 
 For more details, check out the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying).
 

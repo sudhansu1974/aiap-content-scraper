@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { analyzeContent } from '@/lib/ai/content-analyzer';
-import { ScrapedData } from '@/lib/puppeteer/client';
+import { ScrapedData } from '@/lib/firecrawl/client';
 
 export async function POST(request: NextRequest) {
     try {
@@ -41,4 +41,3 @@ export async function POST(request: NextRequest) {
         );
     }
 }
- 

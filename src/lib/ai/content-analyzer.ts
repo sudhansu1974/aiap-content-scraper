@@ -2,7 +2,7 @@
  * Content analyzer module for AI-powered content analysis using OpenAI
  */
 
-import { ScrapedData } from '@/lib/puppeteer/client';
+import { ScrapedData } from '@/lib/firecrawl/client';
 import OpenAI from 'openai';
 
 export interface ContentAnalysis {
